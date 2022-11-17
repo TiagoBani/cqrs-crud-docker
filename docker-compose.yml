@@ -1,0 +1,54 @@
+version: "3.9"
+services:
+  redis:
+    image: "redis:7.0-alpine3.16"
+    volumes:
+        - ./database/redis/redis.conf:/usr/local/etc/redis/redis.conf
+    ports:
+      - '6379:6379'
+  postgres:
+    hostname: postgres
+    image: "postgres:15-alpine3.16"
+    volumes:
+      - ./database/postgres:/docker-entrypoint-initdb.d/
+    command: postgres -c 'max_connections=200'
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: test
+      POSTGRES_DB: cqrs
+    ports:
+      - '5432:5432'
+  command:
+    container_name: command
+    build:
+      context: command
+    hostname: command
+    depends_on:
+      - postgres
+      - kafka
+    ports:
+      - '8080:8080'
+    init: true
+    environment:
+      - DATABASE_URL=jdbc:postgresql://postgres:5432/cqrs?user=postgres&password=test
+      - SPRING_PROFILES_ACTIVE=local
+  kafka:
+    image: dougdonohoe/fast-data-dev
+    ports:
+      - "9092:9092"
+      - "8081:8081"
+      - "8082:8082"
+      - "8083:8083"
+      - "2181:2181"
+      - "3030:3030"
+      - "9001:9001"
+    environment:
+      - "ADV_HOST=localhost"
+      - "SAMPLEDATA=0"
+      - "RUNNING_SAMPLEDATA=0"
+      - "RUNTESTS=0"
+      - "DISABLE_JMX=1"
+      - "SUPERVISORWEB=1"
+
+volumes:
+  postgres:
